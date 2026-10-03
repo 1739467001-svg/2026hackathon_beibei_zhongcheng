@@ -21,10 +21,14 @@ export class Input {
     // 触屏那一路的输入（没接 touch.js 时永远是 0 / false）
     this.tForward = 0;
     this.tTurn = 0;
+    this.tPitch = 0;        // 触屏摇杆上下（飞机用：正 = 爬升）
     this.tFirePressed = false;
     this.tFireHeld = false;
     this.touchDX = 0;
     this.touchDY = 0;
+    // 重力感应那一路（touch.js 的陀螺仪开关送进来，正 = 右转 / 爬升）
+    this.gTurn = 0;
+    this.gPitch = 0;
     // 触屏设备标记：touch.js 激活时置 true，用来跳过指针锁定这类桌面专属逻辑
     this.touchMode = false;
 

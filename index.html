@@ -97,17 +97,22 @@
   <div id="spectate-hint" class="hidden"></div>
 </div>
 
-<!-- 触屏操控层：左半屏虚拟摇杆、右半屏滑屏转视角、开火/维修/静音按钮。
+<!-- 触屏操控层：左半屏虚拟摇杆、右半屏滑屏转视角、开火/维修/重力/静音按钮。
      只在触屏设备上由 touch.js 显示（桌面 ?touch=1 可调试） -->
 <div id="touch-ui" class="hidden">
   <div id="touch-stick"><div id="touch-stick-knob"></div></div>
   <button id="tb-fire" class="touch-btn">开炮</button>
   <button id="tb-repair" class="touch-btn">维修</button>
+  <button id="tb-gyro" class="touch-btn hidden">重力</button>
   <button id="tb-mute" class="touch-btn" aria-label="静音">🔊</button>
 </div>
 
-<!-- 竖屏提示：手机竖着拿时轻轻提一句，不挡操作 -->
-<div id="portrait-tip">📱 横屏体验更佳</div>
+<!-- 竖屏拦截页：开打中把手机竖着拿会整屏盖住，请玩家横过来 -->
+<div id="rotate-gate">
+  <div class="rg-phone">📱</div>
+  <h2>请横屏游玩</h2>
+  <p>把手机横过来，体验更带感：<br />左手摇杆机动，右手开炮，视野也更宽。</p>
+</div>
 
 <!-- 开始 / 结算 -->
 <div id="overlay">
@@ -171,8 +176,9 @@
     <div class="rules-body">
       <!-- 触屏设备的操作说明：只在触屏设备上显示（body.touch） -->
       <div class="keys" id="touch-keys">
-        <div><kbd>左半屏</kbd><span>按住出现虚拟摇杆：坦克前进 / 转向，飞机油门 / 转向</span></div>
-        <div><kbd>右半屏</kbd><span>手指滑动转视角、瞄准（飞机：上下滑 = 爬升 / 俯冲）</span></div>
+        <div><kbd>左半屏</kbd><span>按住出现虚拟摇杆：坦克前后 / 转向；飞机上下推 = 爬升 / 俯冲（自动满油门巡航）</span></div>
+        <div><kbd>右半屏</kbd><span>手指滑动转视角、瞄准</span></div>
+        <div><kbd>重力感应</kbd><span>开飞机时点「重力」钮开启：倾斜手机 = 压杆，左右倾转弯、前倾俯冲、后仰爬升；再点一次关闭</span></div>
         <div><kbd>开炮</kbd><span>右下角圆钮，按住连发</span></div>
         <div><kbd>维修</kbd><span>应急修复（仅坦克，规则和键盘一样）</span></div>
         <div><kbd>右下按钮</kbd><span>切换 移动 / 瞄准 模式（仅坦克）</span></div>

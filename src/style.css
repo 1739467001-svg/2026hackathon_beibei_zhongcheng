@@ -981,6 +981,23 @@ button.ghost.small {
   font-size: 13px;
 }
 
+/* 重力感应钮：开飞机时顶替维修钮的位置（开坦克时由 touch.js 隐藏） */
+#tb-gyro {
+  right: calc(138px + env(safe-area-inset-right));
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  width: 64px;
+  height: 64px;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+#tb-gyro.on {
+  background: linear-gradient(180deg, rgba(90, 210, 255, 0.9), rgba(30, 110, 220, 0.8));
+  border-color: #9fe0ff;
+  color: #08222e;
+  box-shadow: 0 0 18px rgba(90, 210, 255, 0.55);
+}
+
 /* 静音：左上角，避开中间的计分条 */
 #tb-mute {
   left: calc(14px + env(safe-area-inset-left));
@@ -1024,27 +1041,55 @@ body.touch #touch-keys {
   display: grid;
 }
 
-/* 竖屏提示：只在「触屏 + 竖屏 + 开打中」出现 */
-#portrait-tip {
+/* 竖屏拦截页：开打中把手机竖着拿 → 整屏盖住，请玩家横过来。
+   菜单/结算页竖着看没问题，所以只在「触屏 + 竖屏 + 开打中」出现 */
+#rotate-gate {
   display: none;
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 6;
-  padding: 7px 16px;
-  border-radius: 999px;
-  background: rgba(10, 13, 18, 0.72);
-  border: 1px solid rgba(255, 180, 84, 0.4);
-  color: #ffd9a0;
-  font-size: 12px;
-  letter-spacing: 1px;
-  pointer-events: none;
+  inset: 0;
+  z-index: 40;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(10, 12, 18, 0.82), rgba(4, 6, 10, 0.97)),
+    #06080b;
+  color: #e9eef5;
+  pointer-events: auto;
+}
+
+#rotate-gate .rg-phone {
+  font-size: 64px;
+  line-height: 1;
+  animation: rg-rotate 1.6s ease-in-out infinite;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.6));
+}
+
+@keyframes rg-rotate {
+  0%, 15% { transform: rotate(0deg); }
+  55%, 80% { transform: rotate(90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+#rotate-gate h2 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 6px;
+  color: var(--warm);
+}
+
+#rotate-gate p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.9;
+  color: #a9b4c2;
 }
 
 @media (orientation: portrait) {
-  body.touch.in-game #portrait-tip {
-    display: block;
-    top: calc(64px + env(safe-area-inset-top));
+  body.touch.in-game #rotate-gate {
+    display: flex;
   }
 }
 

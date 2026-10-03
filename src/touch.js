@@ -6,6 +6,8 @@ const DEADZONE = 0.22;   // 摇杆死区：推这么小不算数，防手抖
 const STICK_RADIUS = 52; // 摇杆头最多推离中心多少像素
 const LOOK_SCALE = 1.45; // 滑动转视角比鼠标灵敏一点（手指行程短）
 
+const clamp1 = (v) => Math.max(-1, Math.min(1, v));
+
 export function isTouchDevice() {
   const q = new URLSearchParams(location.search);
   if (q.has('no-touch')) return false;
@@ -35,6 +37,16 @@ export class TouchControls {
       fire: document.getElementById('tb-fire'),
       repair: document.getElementById('tb-repair'),
       mute: document.getElementById('tb-mute'),
+      gyro: document.getElementById('tb-gyro'),
+    };
+
+    // 重力感应状态：开着才监听 deviceorientation；校准基线 = 开启那一刻的握持姿态
+    this.gyroOn = false;
+    this.gyroBase = { roll: 0, pitch: 0 };
+    this._onOrient = (e) => this._gyroEvent(e);
+    this._onGyroBtn = (e) => {
+      e.preventDefault();
+      this._toggleGyro();
     };
 
     this._onCanvasDown = (e) => this._pointerDown(e);
@@ -73,6 +85,7 @@ export class TouchControls {
     add(window, 'pointerup', this._onFireUp);
     add(this.el.repair, 'pointerdown', this._onRepair);
     add(this.el.mute, 'pointerdown', this._onMute);
+    add(this.el.gyro, 'pointerdown', this._onGyroBtn);
   }
 
   // 开打/结算时切换按钮层。视角监听常驻（canvas 上没有 UI 时也收不到指针，不碍事）
@@ -82,9 +95,88 @@ export class TouchControls {
     if (!v) this._releaseAll();
   }
 
-  // 开飞机时把「维修」藏掉（和 HUD 仪表的切换逻辑对齐）
+  // 开坦克时藏掉「重力感应」（那是飞行才用的），开飞机时反过来
   setSide(side) {
     this.el.repair.classList.toggle('hidden', side === 'plane');
+    this.el.gyro.classList.toggle('hidden', side !== 'plane');
+    if (side !== 'plane') this._setGyro(false, true);
+  }
+
+  // ---------- 重力感应（飞机） ----------
+  // 倾斜手机 = 压杆：左右倾斜转弯、前倾俯冲、后仰爬升。
+  // iOS 要求必须由用户点按钮那次手势来申请权限，所以开关做成按钮。
+
+  async _toggleGyro() {
+    if (this.gyroOn) {
+      this._setGyro(false);
+      return;
+    }
+    try {
+      // iOS 13+ 要显式要权限；Android / 桌面没有这个 API，直接监听就行
+      if (typeof DeviceOrientationEvent !== 'undefined'
+        && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const res = await DeviceOrientationEvent.requestPermission();
+        if (res !== 'granted') {
+          this.game.hud.feed('没拿到重力感应权限，继续用摇杆开', 'danger');
+          return;
+        }
+      }
+      if (typeof DeviceOrientationEvent === 'undefined') {
+        this.game.hud.feed('这台设备不支持重力感应', 'danger');
+        return;
+      }
+    } catch {
+      this.game.hud.feed('重力感应开启失败，继续用摇杆开', 'danger');
+      return;
+    }
+    this.gyroBase = { roll: 0, pitch: 0 };   // 先归零，首帧事件里再校准
+    window.addEventListener('deviceorientation', this._onOrient);
+    this._setGyro(true);
+    this.game.hud.feed('重力感应已开启：倾斜手机转弯 / 爬升俯冲，再点一次关闭', 'air');
+  }
+
+  _setGyro(on, silent) {
+    this.gyroOn = on;
+    this.el.gyro.classList.toggle('on', on);
+    if (!on) {
+      window.removeEventListener('deviceorientation', this._onOrient);
+      this.input.gTurn = 0;
+      this.input.gPitch = 0;
+    }
+  }
+
+  // 把设备姿态角换算成"横屏握持"下的两个操控量：
+  //   roll：绕屏幕法线左右压（右压为正 → 右转）
+  //   pitch：前后倾（顶部朝怀里的方向仰为正 → 爬升）
+  // 不同屏幕朝向下 beta/gamma 轴会互换，按 screen.orientation.angle 分派。
+  _gyroAxes(e) {
+    const angle = screen.orientation?.angle ?? window.orientation ?? 0;
+    switch (angle) {
+      case 90: return { roll: e.beta ?? 0, pitch: -(e.gamma ?? 0) };
+      case -90: case 270: return { roll: -(e.beta ?? 0), pitch: (e.gamma ?? 0) };
+      case 180: return { roll: -(e.gamma ?? 0), pitch: -(e.beta ?? 0) };
+      default: return { roll: (e.gamma ?? 0), pitch: (e.beta ?? 0) };
+    }
+  }
+
+  _gyroEvent(e) {
+    if (!this.gyroOn) return;
+    const raw = this._gyroAxes(e);
+    // 首帧校准：开感应那一刻怎么握着，哪个方向就是"水平"
+    if (this.gyroBase.roll === 0 && this.gyroBase.pitch === 0) {
+      this.gyroBase = { roll: raw.roll, pitch: raw.pitch };
+    }
+    this.input.gTurn = this._tilt(raw.roll - this.gyroBase.roll);
+    this.input.gPitch = this._tilt(raw.pitch - this.gyroBase.pitch);
+  }
+
+  // 角度 → -1~1：3° 死区防手抖，压到 28° 拉满
+  _tilt(deg) {
+    const dz = 3;
+    const s = Math.sign(deg);
+    const a = Math.abs(deg);
+    if (a < dz) return 0;
+    return clamp1(s * Math.min(1, (a - dz) / (28 - dz)));
   }
 
   _releaseAll() {
@@ -93,6 +185,7 @@ export class TouchControls {
     this.el.stick.style.display = 'none';
     this.input.tForward = 0;
     this.input.tTurn = 0;
+    this.input.tPitch = 0;
     this.input.tFireHeld = false;
   }
 
@@ -126,9 +219,10 @@ export class TouchControls {
       const nx = dx * k / STICK_RADIUS;
       const ny = dy * k / STICK_RADIUS;
       this._moveKnob(dx * k, dy * k);
-      // 摇杆 x = 左右转向；y = 上推前进/拉杆后退（带死区）
+      // 摇杆 x = 左右转向；y = 上推前进（坦克）/ 爬升（飞机），带死区
       this.input.tTurn = Math.abs(nx) < DEADZONE ? 0 : nx;
       this.input.tForward = Math.abs(ny) < DEADZONE ? 0 : -ny;
+      this.input.tPitch = this.input.tForward;   // 飞机：摇杆上下 = 爬升 / 俯冲
     } else if (e.pointerId === this.lookId) {
       this.input.addLookDelta(
         (e.clientX - this.lookLast.x) * LOOK_SCALE,
@@ -145,6 +239,7 @@ export class TouchControls {
       this.el.stick.style.display = 'none';
       this.input.tForward = 0;
       this.input.tTurn = 0;
+      this.input.tPitch = 0;
     } else if (e.pointerId === this.lookId) {
       this.lookId = null;
     }

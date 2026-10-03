@@ -1152,19 +1152,28 @@ export class Game {
   }
 
   // 开飞机：鼠标/方向键定机头方向（准星指哪，机头就朝哪转），W/S 推油门，左键开炮
+  // 触屏上的开法：自动满油门巡航，摇杆上下 = 爬升 / 俯冲，再可选重力感应
   updatePlayerPlane(dt) {
     const pl = this.playerPlane;
     if (!pl || !pl.alive) return;
     const cfg = CONFIG.camera.plane;
 
     const md = this.input.takeMouseDelta();
-    const turn = this.input.camTurn + this.input.turn;   // Q/E、方向键、A/D 都能转向
+    const turn = this.input.camTurn + this.input.turn + this.input.gTurn;   // Q/E、方向键、A/D、摇杆、重力都能转向
+    let pitchIn = this.input.camPitchAdjust;
+    if (this.touch) {
+      // 触屏没有空闲的手指管油门：自动满油门巡航，机动全交给摇杆和重力
+      pl.controlThrottle = 1;
+      pitchIn += this.input.tPitch + this.input.gPitch;
+    } else {
+      pl.controlThrottle = this.input.forward;
+    }
     if (md.x !== 0 || turn !== 0) {
       this.lookYaw = wrapAngle(this.lookYaw - md.x * cfg.sensitivity - turn * 1.5 * dt);
     }
-    if (md.y !== 0 || this.input.camPitchAdjust !== 0) {
+    if (md.y !== 0 || pitchIn !== 0) {
       this.lookPitch = clamp(
-        this.lookPitch - md.y * cfg.sensitivity + this.input.camPitchAdjust * 0.9 * dt,
+        this.lookPitch - md.y * cfg.sensitivity + pitchIn * 0.9 * dt,
         cfg.pitchMin,
         cfg.pitchMax
       );
@@ -1172,7 +1181,6 @@ export class Game {
 
     const cp = Math.cos(this.lookPitch);
     pl.aimDir.set(Math.sin(this.lookYaw) * cp, Math.sin(this.lookPitch), Math.cos(this.lookYaw) * cp).normalize();
-    pl.controlThrottle = this.input.forward;
     const pressed = this.input.consumeFire();
     pl.controlFire = pressed || this.input.fireHeld;
     if (pressed) this.hud.crosshairKick();
