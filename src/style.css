@@ -1014,13 +1014,19 @@ body.touch #mode-widget {
   bottom: calc(206px + env(safe-area-inset-bottom));
 }
 
-/* 触屏：修复提示挪到画面上沿，别和底部按钮打架 */
+/* 触屏：修复提示收进左下角、贴在装甲条正上方（和血条对齐成一列）。
+   不能放画面上沿——横屏时正好压在地平线上，挡看远处敌情 */
 body.touch #repair-hint {
-  bottom: auto;
-  top: calc(118px + env(safe-area-inset-top));
-  max-width: 74vw;
+  left: calc(18px + env(safe-area-inset-left));
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  top: auto;
+  transform: none;
+  max-width: min(360px, 56vw);
   white-space: normal;
-  text-align: center;
+  text-align: left;
+  font-size: 12px;
+  padding: 5px 12px;
+  opacity: 0.92;
 }
 
 /* 触屏：底部血条/弹夹整体靠左下，右侧留给开火手 */
