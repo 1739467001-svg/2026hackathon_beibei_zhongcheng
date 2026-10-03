@@ -13,6 +13,7 @@ import { Tank } from './tank.js';
 import { TankAI } from './ai.js';
 import { Input } from './input.js';
 import { HUD } from './hud.js';
+import { TouchControls, isTouchDevice } from './touch.js';
 import { AimLine } from './aimline.js';
 import { TreadMarks } from './tracks.js';
 import { GameAudio, MenuMusic } from './audio.js';
@@ -50,12 +51,14 @@ export function makeSkyEnvTexture(topHex, bottomHex, k) {
 export class Game {
   constructor() {
     this.canvas = document.getElementById('game');
+    // 触屏设备降一档画质：像素比压到 1.5、阴影贴图减半 —— 手机 GPU 撑不住桌面那套
+    this.touchEnabled = isTouchDevice();
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: !this.touchEnabled,
       powerPreference: 'high-performance',
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.touchEnabled ? 1.5 : 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -145,16 +148,15 @@ export class Game {
 
     this.input = new Input(this.canvas);
     this.hud = new HUD();
+    // 触屏设备：装上虚拟摇杆 / 开火按钮那套操控
+    this.touch = this.touchEnabled ? new TouchControls(this) : null;
     this.hud.onStart((side) => this.start(side));
     this.hud.onRestart((side) => this.start(side));
 
-    // M 键静音（音效是现场合成的，不占界面，所以开关藏在按键里）
+    // M 键静音（音效是现场合成的，不占界面，所以开关藏在按键里；触屏设备用左上角按钮）
     window.addEventListener('keydown', (e) => {
       if (e.key !== 'm' && e.key !== 'M') return;
-      const muted = this.audio.toggleMute();
-      this.music.setMuted(muted);
-      this.resultMusic.setMuted(muted);
-      this.hud.feed(muted ? '已静音（按 M 恢复）' : '音效已开启', 'friendly');
+      this.toggleMute();
     });
     this.hud.onToggleMode(() => this.toggleMode());
 
@@ -223,7 +225,7 @@ export class Game {
     const sun = this.sun;
     sun.position.copy(_sunOffset);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(this.touchEnabled ? 1024 : 2048, this.touchEnabled ? 1024 : 2048);
     sun.shadow.camera.near = 1;
     sun.shadow.camera.far = 420;
     sun.shadow.camera.left = -120;
@@ -317,6 +319,14 @@ export class Game {
 
   // ---------- 战斗流程 ----------
 
+  // 静音开关：M 键和触屏左上角的按钮都走这里
+  toggleMute() {
+    const muted = this.audio.toggleMute();
+    this.music.setMuted(muted);
+    this.resultMusic.setMuted(muted);
+    this.hud.feed(muted ? '已静音（点喇叭恢复）' : '音效已开启', 'friendly');
+  }
+
   start(side) {
     this.playerSide = side === 'plane' ? 'plane' : 'tank';
     this.audio.init();   // 浏览器要求音频由用户操作启动，点按钮正好是那次操作
@@ -324,7 +334,14 @@ export class Game {
     this.music.stop();   // 开打了：开场曲停掉，把耳朵让给战场
     this.resultMusic.stop();
     this.hud.showGame();
-    this.input.requestLock();
+    if (this.touch) {
+      // 触屏：亮出虚拟摇杆和按钮（开飞机时自动藏掉「维修」）
+      this.touch.setSide(this.playerSide);
+      this.touch.setActive(true);
+    } else {
+      this.input.requestLock();
+    }
+    document.body.classList.add('in-game');
     this.startBattle();
   }
 
@@ -921,16 +938,20 @@ export class Game {
       this.lookPitch = 0;
       this.camYaw = 0;
       this.camPitch = 0;
-      // 黑屏那一秒鼠标还在动，攒下来的位移要清掉，不然刚回来视线会猛甩一下
+      // 黑屏那一秒鼠标/手指还在动，攒下来的位移要清掉，不然刚回来视线会猛甩一下
       this.input.mouseDX = 0;
       this.input.mouseDY = 0;
+      this.input.touchDX = 0;
+      this.input.touchDY = 0;
       this.input.firePressed = false;
       this.input.fireHeld = false;
+      this.input.tFirePressed = false;
+      this.input.tFireHeld = false;
       this.deathCamTimer = 0;
       this.updateCamera(1);   // 镜头直接怼到新位置，别从坠机点慢慢飘过来
       this.hud.stopSpectating();
       this.hud.feed(`飞机已重新升空！还剩 ${plane.lives} 次复活机会`, 'air');
-      this.input.requestLock();
+      if (!this.touch) this.input.requestLock();
       return;
     }
     this.hud.feed(`${plane.name} 重新升空（还剩 ${plane.lives} 次复活）`, plane.team === TEAM.ALLY ? 'air' : 'danger');
@@ -1009,6 +1030,8 @@ export class Game {
     // 不给个缓冲的话一松手就点到刚出现的「再来一局」了
     this.hud.blackout(1);
     this.input.releaseLock();
+    if (this.touch) this.touch.setActive(false);   // 结算了，摇杆和按钮都收起来
+    document.body.classList.remove('in-game');
     const mins = Math.floor(this.elapsed / 60);
     const secs = Math.floor(this.elapsed % 60);
     this.hud.showGameOver(win, {

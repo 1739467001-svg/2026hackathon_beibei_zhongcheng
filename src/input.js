@@ -1,4 +1,8 @@
 // 键鼠输入：WASD 开车、鼠标转视角与瞄准、左键/空格开炮
+// 触屏设备的摇杆/滑动/开火按钮（touch.js）也汇进同一套接口：
+// tForward / tTurn 是模拟量（-1~1），touchDX/DY 并进视角位移，tFire* 并进开火。
+
+const clamp1 = (v) => Math.max(-1, Math.min(1, v));
 
 export class Input {
   constructor(canvas) {
@@ -8,12 +12,21 @@ export class Input {
     this.mouseDY = 0;
     this.pointerLocked = false;
     this.firePressed = false;
-    this.fireHeld = false;
+    this._fireHeld = false;
     this.dragging = false;
     this.enabled = true;
     this.lastLookTime = 0;
     this.modeTogglePressed = false;
     this.repairPressed = false;
+    // 触屏那一路的输入（没接 touch.js 时永远是 0 / false）
+    this.tForward = 0;
+    this.tTurn = 0;
+    this.tFirePressed = false;
+    this.tFireHeld = false;
+    this.touchDX = 0;
+    this.touchDY = 0;
+    // 触屏设备标记：touch.js 激活时置 true，用来跳过指针锁定这类桌面专属逻辑
+    this.touchMode = false;
 
     this._onKeyDown = (e) => {
       const k = e.key.toLowerCase();
@@ -48,8 +61,7 @@ export class Input {
         this.fireHeld = false;
         this.dragging = false;
       }
-    };
-    this._onLockChange = () => {
+    };    this._onLockChange = () => {
       this.pointerLocked = document.pointerLockElement === this.canvas;
       if (!this.pointerLocked) this.dragging = false;
     };
@@ -65,22 +77,41 @@ export class Input {
   }
 
   requestLock() {
-    if (this.canvas.requestPointerLock) {
-      const p = this.canvas.requestPointerLock();
-      if (p && p.catch) p.catch(() => {});
-    }
+    // 纯触屏设备没有指针锁定，直接跳过（有的浏览器会抛异常）
+    if (this.touchMode) return;
+    try {
+      if (this.canvas.requestPointerLock) {
+        const p = this.canvas.requestPointerLock();
+        if (p && p.catch) p.catch(() => {});
+      }
+    } catch { /* 拿不到锁就算了，游戏照常 */ }
   }
 
   releaseLock() {
     if (document.exitPointerLock) document.exitPointerLock();
   }
 
+  // 开火按住状态：鼠标按住 或 触屏开火按钮按住，任一都算
+  get fireHeld() {
+    return this._fireHeld || this.tFireHeld;
+  }
+
+  set fireHeld(v) {
+    this._fireHeld = v;
+  }
+
+  addLookDelta(dx, dy) {
+    this.touchDX += dx;
+    this.touchDY += dy;
+    this.lastLookTime = performance.now();
+  }
+
   get forward() {
-    return (this.keys.has('w') ? 1 : 0) - (this.keys.has('s') ? 1 : 0);
+    return (this.keys.has('w') ? 1 : 0) - (this.keys.has('s') ? 1 : 0) || this.tForward;
   }
 
   get turn() {
-    return (this.keys.has('d') ? 1 : 0) - (this.keys.has('a') ? 1 : 0);
+    return clamp1((this.keys.has('d') ? 1 : 0) - (this.keys.has('a') ? 1 : 0) + this.tTurn);
   }
 
   // 键盘转视角：Q/E 或 左右方向键
@@ -96,15 +127,22 @@ export class Input {
   }
 
   takeMouseDelta() {
-    const d = { x: this.mouseDX, y: this.mouseDY };
+    // 触屏滑动和鼠标位移汇成同一路视角增量（滑动单独乘了增益，这里直接相加）
+    const d = {
+      x: this.mouseDX + this.touchDX,
+      y: this.mouseDY + this.touchDY,
+    };
     this.mouseDX = 0;
     this.mouseDY = 0;
+    this.touchDX = 0;
+    this.touchDY = 0;
     return d;
   }
 
   consumeFire() {
-    const f = this.firePressed || this.keys.has(' ');
+    const f = this.firePressed || this.keys.has(' ') || this.tFirePressed || this.tFireHeld;
     this.firePressed = false;
+    this.tFirePressed = false;
     return f;
   }
 

@@ -162,9 +162,10 @@ export class HUD {
     if (this.el.enterBtn) this.el.enterBtn.addEventListener('click', cb);
   }
 
-  // 移动模式 / 瞄准模式
+  // 移动模式 / 瞄准模式（触屏设备没有 F 键，按钮文案里就不写）
   setMode(precise) {
-    this.el.modeBtn.textContent = precise ? '瞄准模式 · F' : '移动模式 · F';
+    const key = document.body.classList.contains('touch') ? '' : ' · F';
+    this.el.modeBtn.textContent = precise ? `瞄准模式${key}` : `移动模式${key}`;
     this.el.modeBtn.classList.toggle('aim', precise);
     this.el.crosshair.classList.toggle('aim', precise);
   }
@@ -253,8 +254,9 @@ export class HUD {
       this.el.repairHint.classList.remove('hidden');
       this.el.repairHint.classList.remove('repairing');
       // 耗时就写在提示里：修得多就久、修得少就快，心里有数
+      const how = document.body.classList.contains('touch') ? '点「维修」' : '按 R';
       this.el.repairHint.textContent =
-        `按 R 应急修复：可修回 ${(ceiling - tank.health).toFixed(0)} 点，` +
+        `${how}应急修复：可修回 ${(ceiling - tank.health).toFixed(0)} 点，` +
         `约 ${tank.repairDuration.toFixed(1)} 秒（上限 ${ceiling.toFixed(0)}）`;
     } else {
       this.el.repairHint.classList.add('hidden');
