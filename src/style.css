@@ -813,6 +813,21 @@ button:active {
   min-height: 34px;
 }
 
+/* 菜单底部的 AI 资产署名（注明工具来源） */
+.ai-credit {
+  margin: 14px 0 0;
+  font-size: 11px;
+  color: #8d8272;
+}
+.ai-credit a {
+  color: #b9a97f;
+  text-decoration: none;
+  border-bottom: 1px dashed #6d6353;
+}
+.ai-credit a:hover {
+  color: #e8d9a8;
+}
+
 /* 开飞机时的高度读数 */
 .plane-alt {
   align-self: center;

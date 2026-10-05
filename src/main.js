@@ -16,6 +16,7 @@ import { HUD } from './hud.js';
 import { TouchControls, isTouchDevice } from './touch.js';
 import { AimLine } from './aimline.js';
 import { TreadMarks } from './tracks.js';
+import { AirdropManager } from './airdrop.js';
 import { GameAudio, MenuMusic } from './audio.js';
 
 const _point = new THREE.Vector3();
@@ -145,6 +146,8 @@ export class Game {
     this.music = new MenuMusic(themes('menu-theme'));
     this.resultMusic = new MenuMusic(themes('result-theme'));
     this.aimLine = new AimLine(this.scene, this.terrain);
+    // Tripo 空投礼盒：每局掉几个 AI 生成的补给礼盒（模型由 Tripo AI 生成）
+    this.airdrops = new AirdropManager(this);
 
     this.input = new Input(this.canvas);
     this.hud = new HUD();
@@ -559,6 +562,7 @@ export class Game {
       );
     }
     this._feedTerrainTip();
+    this.airdrops.reset();
   }
 
   // 纯空战开局：两边各摆成一排"车道"，而且我方占偶数道、敌方占奇数道 ——
@@ -1471,6 +1475,7 @@ export class Game {
     this.scouts.update(dt);
     this.planes.update(dt);
     this.bullets.update(dt);
+    this.airdrops.update(dt);
 
     // 兜底：每帧都判一次胜负，不依赖"谁打死了谁"的回调。
     // 之前只在阵亡回调里判，结果某个分支漏了调用（击落飞机的正常分支），

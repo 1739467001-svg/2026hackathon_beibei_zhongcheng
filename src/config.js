@@ -350,6 +350,25 @@ export const CONFIG = {
     warnCooldown: 16,          // "你被敌方侦察兵发现了"最短间隔
     blastRadius: 5,            // 爆炸震倒侦察兵的范围（炮弹落点、坦克/飞机爆炸都会震死人）
   },
+
+  // Tripo 空投礼盒：每局从天上掉下 AI 生成的补给礼盒（GLB 由 Tripo AI 生成，
+  // assets/tripo_gift_crate.glb；没这个文件就自动用程序画的低配礼盒，玩法不受影响）
+  airdrop: {
+    count: 2,           // 每局空投几个
+    dropAlt: 55,        // 从多高开始往下飘（米）
+    fallSpeed: 7,       // 降落速度（米/秒）
+    swayAmp: 3.2,       // 飘落时左右摇摆的幅度（米）
+    swaySpeed: 0.55,    // 摇摆速度
+    pickupRadius: 4.2,  // 坦克开到多近算拾取（米）
+    airPickupRadius: 7, // 飞机掠过时的拾取半径（水平距离）
+    airPickupHeight: 11,// 飞机拾取的最大离地高度
+    size: 2.3,          // 礼盒视觉尺寸（米，GLB 会按包围盒归一化到这个大小）
+    bobAmp: 0.16,       // 落地后上下浮动的幅度
+    bobSpeed: 2.1,      // 浮动速度
+    spinSpeed: 0.8,     // 落地后自转速度（弧度/秒）
+    beamHeight: 26,     // 拾取光柱高度
+    openTime: 0.45,     // 拾取时开盒缩掉动画的时长（秒）
+  },
 };
 
 export const COLORS = {
