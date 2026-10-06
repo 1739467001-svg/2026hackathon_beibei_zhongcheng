@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { CONFIG } from './config.js';
 import { rand } from './utils.js';
 
@@ -16,7 +17,8 @@ export class AirdropManager {
     this.crates = [];
     this.template = null;     // GLB 模板（加载完成后 clone 出每局的礼盒）
     // 开局就预载：玩家在菜单里点「进军」的工夫，GLB 基本都到位了
-    new GLTFLoader().load(
+    // （Tripo 导出的是 meshopt 压缩格式，必须挂上解码器）
+    new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(
       GIFT_URL,
       (gltf) => { this.template = this._normalize(gltf.scene); },
       undefined,
