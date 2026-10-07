@@ -157,7 +157,7 @@ class GiftCrate {
 
     this.state = 'opening';
     this.openT = 0;
-    this._baseScale = g.scale.x;
+    this._baseScale = this.group.scale.x;
     this.beam.visible = false;
     this._reward(p, isPlane);
   }
