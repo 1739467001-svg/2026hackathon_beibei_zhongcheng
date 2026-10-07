@@ -234,9 +234,7 @@ class GiftCrate {
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.y = CFG.beamHeight / 2;
-    const wrap = new THREE.Group();
-    wrap.add(mesh);
-    return wrap;
+    return mesh;
   }
 
   dispose() {
