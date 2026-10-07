@@ -144,7 +144,8 @@ class GiftCrate {
   _tryPickup() {
     const g = this.game;
     const p = g.player;
-    if (!p || !p.alive || g.state !== 'playing') return;
+    // 死亡/复活切换的瞬间 player 可能是残缺对象,一律跳过
+    if (!p || !p.pos || !p.alive || g.state !== 'playing') return;
     const dx = p.pos.x - this.baseX;
     const dz = p.pos.z - this.baseZ;
     const flat = Math.hypot(dx, dz);
